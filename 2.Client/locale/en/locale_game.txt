@@ -1,0 +1,6 @@
+ADVANCED_DUEL_TITLE	Advanced Duel
+ADVANCED_DUEL_1	You can make a duel for all items.
+ADVANCED_DUEL_2	You can restrict using hp items.
+ADVANCED_DUEL_3	You can restrict changing equipments.
+ADVANCED_DUEL_4	You can restrict mounts.
+ADVANCED_DUEL_5	If you leave the duel, you lose!

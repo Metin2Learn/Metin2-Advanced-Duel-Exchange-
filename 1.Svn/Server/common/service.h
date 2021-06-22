@@ -1,0 +1,1 @@
+#define __BL_ADVANCED_DUEL__
