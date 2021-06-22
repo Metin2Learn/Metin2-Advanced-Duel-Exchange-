@@ -12,8 +12,6 @@ DWORD CPVP::GetLastFightTime()
 }
 
 ///Add
-/*Advanced PVP*/
-
 #if defined(__BL_ADVANCED_DUEL__)
 CAdvancedPVP::CAdvancedPVP(CPVP& v, LPCHARACTER ch_1, LPCHARACTER ch_2)
 	: CPVP{ v }
@@ -21,91 +19,40 @@ CAdvancedPVP::CAdvancedPVP(CPVP& v, LPCHARACTER ch_1, LPCHARACTER ch_2)
 	//Get Classes
 	const CExchange* m_Exhange_1 = ch_1->GetExchange();
 	const CExchange* m_Exhange_2 = ch_2->GetExchange();
-	if (m_Exhange_1 == nullptr || m_Exhange_2 == nullptr)
+	if (m_Exhange_1 == nullptr || m_Exhange_2 == nullptr) // maybe...
 	{
 		sys_err("CAdvancedPVP, Exchange is null pointer.");
 		return;
 	}
 
-	//Get Item Vectors
-	auto vItem_1 = m_Exhange_1->GetItemVector();
-	auto vItem_2 = m_Exhange_2->GetItemVector();
-	vDuelItems.reserve(vItem_1.size() + vItem_2.size());
+	//Set Flag (m_Exhange_1 & m_Exhange_2 flags are same)
+	uFlag = m_Exhange_1->GetAdvancedDuelFlag();
 
-	//Merge Vectors
-	vDuelItems.insert(vDuelItems.end(), std::make_move_iterator(vItem_1.begin()), std::make_move_iterator(vItem_1.end()));
-	vDuelItems.insert(vDuelItems.end(), std::make_move_iterator(vItem_2.begin()), std::make_move_iterator(vItem_2.end()));
-
-	//Remove Items From Characters
-	for (LPITEM Item : vDuelItems)
-		if (Item != nullptr)
-			Item->RemoveFromCharacter();
-
-	//Get Money
-	const long lMoney_1 = m_Exhange_1->GetGold();
-	const long lMoney_2 = m_Exhange_2->GetGold();
-	lGold = lMoney_1 + lMoney_2; // Safe For Default Limit
-
-	//Remove Money From Characters
-	ch_1->PointChange(POINT_GOLD, -lMoney_1);
-	ch_2->PointChange(POINT_GOLD, -lMoney_2);
+	//Player Stuff
+	const bool bMountRestrict = IsForbidden(CAdvancedPVP::EFLAG::Mount);
+	arrPlayerStuff[0] = std::make_unique< SPlayerStuff >(ch_1, m_Exhange_1->GetItemVector(), m_Exhange_1->GetGold(), bMountRestrict);
+	arrPlayerStuff[1] = std::make_unique< SPlayerStuff >(ch_2, m_Exhange_2->GetItemVector(), m_Exhange_2->GetGold(), bMountRestrict);
 
 	//Agree
 	for (std::uint8_t i = 0; i < 2; i++)
 		m_players[i].bAgree = true;
-
-	//Set Flag (m_Exhange_1 & m_Exhange_2 flags are same)
-	uFlag = m_Exhange_1->GetAdvancedDuelFlag();
-
-	//Mount
-	if (IsForbidden(CAdvancedPVP::EFLAG::Mount))
-	{
-		if (ch_1->GetMountVnum())
-			ch_1->StopRiding();
-
-		if (ch_2->GetMountVnum())
-			ch_2->StopRiding();
-	}
-}
-
-CAdvancedPVP::~CAdvancedPVP()
-{
-	if (vDuelItems.empty())
-		return;
-
-	// Say 'good bye' to items
-	for (LPITEM Item : vDuelItems)
-		if (Item != nullptr)
-			ITEM_MANAGER::Instance().DestroyItem(Item);
 }
 
 void CAdvancedPVP::Win(DWORD dwPID)
 {
-	LPCHARACTER chWinner = CHARACTER_MANAGER::instance().FindByPID(dwPID);
-	if (chWinner == nullptr)
+	LPCHARACTER ch = CHARACTER_MANAGER::instance().FindByPID(dwPID);
+	if (ch == nullptr)
 		return;
 
-	//Give All Items To Winner Player
-	for (LPITEM Item : vDuelItems)
-	{
-		if (Item == nullptr)
-			continue;
-
-		Item->SetExchanging(false); // Important
-		chWinner->AutoGiveItem(Item, true); // true: Long Ownership
-	}
-
-	// Don't let 'Destructor' to delete items.
-	vDuelItems.clear();
-
-	//Give All Money To Winner Player
-	chWinner->GiveGold(lGold);
-
-	//Info Message For Winner Player
-	chWinner->ChatPacket(CHAT_TYPE_INFO, "[ADVANCED DUEL] Congratulation, you won!");
+	//Give All Stuff To Winner
+	for (const auto& x : arrPlayerStuff)
+		x->Win(ch);
+	
+	//Info Message
+	ch->ChatPacket(CHAT_TYPE_INFO, "[ADVANCED DUEL] Congratulation, you won!");
 
 	//Win Effect
-	chWinner->EffectPacket(SE_ADVANCED_PVP_KILL);
+	ch->EffectPacket(SE_ADVANCED_PVP_KILL);
 
 	// Clear Target etc.
 	Packet(true);
@@ -128,6 +75,43 @@ CAdvancedPVP* CPVPManager::GetAdvancedPVP(LPCHARACTER pkChr) const
 	}
 
 	return nullptr;
+}
+
+CAdvancedPVP::SPlayerStuff::SPlayerStuff(LPCHARACTER m_ch, std::vector<LPITEM>&& m_DuelItems, long m_Gold, bool bMountRestrict)
+	: ch(m_ch), vDuelItems(std::move(m_DuelItems)), lGold(m_Gold)
+{
+	for (LPITEM Item : vDuelItems)
+	{
+		if (Item == nullptr)
+			continue;
+
+		Item->SetExchanging(false); // Important
+		Item->RemoveFromCharacter();
+	}
+
+	ch->PointChange(POINT_GOLD, -lGold);
+
+	if (bMountRestrict && ch->GetMountVnum())
+		ch->StopRiding();
+}
+
+void CAdvancedPVP::SPlayerStuff::Win(LPCHARACTER ch) const
+{
+	if (ch == nullptr)
+		return;
+
+	//Give All Items To Winner Player
+	for (LPITEM Item : vDuelItems)
+		if (Item)
+			ch->AutoGiveItem(Item, true); // true: Long Ownership
+
+	//Give All Money To Winner Player
+	ch->GiveGold(lGold);
+}
+
+void CAdvancedPVP::SPlayerStuff::GiveMyStuffBack() const // Currently Not Using
+{
+	Win(ch); // Give Stuff The Owner
 }
 #endif
 

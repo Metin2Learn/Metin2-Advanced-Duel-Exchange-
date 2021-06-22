@@ -23,7 +23,7 @@
 class CAdvancedPVP : public CPVP
 {
 public:
-	enum class EFLAG : uint8_t
+	enum class EFLAG : std::uint8_t
 	{
 		AdvancedDuel = 1 << 0,
 		Potion = 1 << 1,
@@ -31,8 +31,23 @@ public:
 		Mount = 1 << 3,
 	};
 
+	class SPlayerStuff
+	{
+	public:
+		SPlayerStuff(LPCHARACTER m_ch, std::vector<LPITEM>&& m_DuelItems, long m_Gold, bool bMountRestrict);
+		~SPlayerStuff() = default;
+		
+		void Win(LPCHARACTER ch) const;
+		void GiveMyStuffBack() const;
+
+	private:
+		LPCHARACTER ch; // Owner
+		std::vector<LPITEM> vDuelItems;
+		long lGold;
+	};
+
 	CAdvancedPVP(CPVP& v, LPCHARACTER ch_1, LPCHARACTER ch_2);
-	~CAdvancedPVP();
+	~CAdvancedPVP() = default;
 
 	void Win(DWORD dwPID) override;
 
@@ -47,9 +62,8 @@ public:
 	}
 
 private:
+	std::array<std::unique_ptr< SPlayerStuff >, 2> arrPlayerStuff;
 	std::uint8_t uFlag; // EFLAG
-	std::vector<LPITEM> vDuelItems; // keep all the items at here
-	long lGold; // keep all the money at here
 };
 #endif
 
