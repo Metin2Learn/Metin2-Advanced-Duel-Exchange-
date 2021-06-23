@@ -65,7 +65,7 @@ CAdvancedPVP* CPVPManager::GetAdvancedPVP(LPCHARACTER pkChr) const
 
 	auto it = m_map_pkPVPSetByID.find(pkChr->GetPlayerID());
 	if (it == m_map_pkPVPSetByID.end())
-		return false;
+		return nullptr;
 
 	for (CPVP* pkPVP : it->second)
 	{
