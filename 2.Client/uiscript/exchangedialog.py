@@ -53,7 +53,7 @@ window = {
 
 					"children" :
 					(
-						{ "name":"TitleName", "type":"text", "x":133, "y":3, "text":uiScriptLocale.EXCHANGE_TITLE, "text_horizontal_align":"center" },
+						{ "name":"TitleName", "type":"text", "x": 133 + ADVANCED_DUEL_SIZE / 2, "y":3, "text":uiScriptLocale.EXCHANGE_TITLE, "text_horizontal_align":"center" },
 					),
 				},
 
