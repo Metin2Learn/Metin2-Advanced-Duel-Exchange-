@@ -1,3 +1,9 @@
+//add
+#include <map>
+#include <vector>
+#include <memory> 
+#include <array>
+
 //Find
 		~CPVP();
 		
